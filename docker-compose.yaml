@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  hdf-tools:
+    build:
+      context: ./
+    container_name: consequences
+    volumes:
+      - ./:/home/rust
+    # entrypoint: ./hot-reloader.sh
+    entrypoint: sleep 1d
