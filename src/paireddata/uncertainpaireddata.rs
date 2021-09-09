@@ -1,4 +1,4 @@
-use super::paireddata::PairedData;
+use super::PairedData;
 
 pub trait PairedDataSampler{
     fn sample(&self, randomvalue: f64) -> PairedData;
