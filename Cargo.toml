@@ -1,3 +1,6 @@
 [package]
 name = "consequences"
 version = "0.1.0"
+
+[dependencies]
+statrs = "0.15.0"

@@ -16,7 +16,7 @@ impl UncertainPairedData {
             xvals: Vec::new()
         }
     }
-    pub fn push<S: DistributedVariable + 'static>(&mut self,x: f64, dist: S) -> &mut Self{
+    pub fn add_pair<S: DistributedVariable + 'static>(&mut self,x: f64, dist: S) -> &mut Self{
         self.yvals.push(Box::new(dist));
         self.xvals.push(x);
         self
