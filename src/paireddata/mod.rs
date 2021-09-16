@@ -2,6 +2,9 @@ pub mod uncertainpaireddata;
 pub trait ValueSampler{
     fn f(&self, x: f64) -> f64;
 }
+pub trait Composable{
+    fn compose(&self, g: &PairedData) ->PairedData;//could probably sub valuesampler here.
+}
 pub struct PairedData{
     pub xvals : Vec<f64>,
     pub yvals : Vec<f64>
@@ -29,6 +32,18 @@ impl ValueSampler for PairedData{
         let a = self.yvals[lower];
         a + slope*(x-self.xvals[lower])
 
+    }
+}
+impl Composable for PairedData {
+    fn compose(&self, g: &PairedData) ->PairedData {
+        let size = self.xvals.len();
+        let mut ys = Vec::new();
+        let mut xs = Vec::new();
+        for i in 0..size{
+            ys.push(self.f(g.yvals[i]));
+            xs.push(g.xvals[i]);
+        }
+        PairedData{xvals: xs, yvals: ys}
     }
 }
 fn bisearch(a: Vec<f64>, len: usize, target_value: f64) -> Option<usize> {

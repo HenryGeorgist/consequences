@@ -1,12 +1,8 @@
 use paireddata::ValueSampler;
-use statistics::DistributedVariable;
-
-use crate::paireddata::uncertainpaireddata::PairedDataSampler;
+use crate::paireddata::{Composable, uncertainpaireddata::PairedDataSampler};
 mod paireddata;
 mod statistics;
 fn main() {
-    let name = "uniform distribution in Rust";
-    let u= statistics::UniformDistribution{min: 1.0, max :2.0};
     let x = vec![1.0,2.0,3.0,4.0];
     let y = vec![10.0,20.0,30.0,40.0];
     let pd = paireddata::PairedData{xvals: x, yvals: y};
@@ -23,12 +19,14 @@ fn main() {
     npd.add_pair(4.0, statistics::NormalDistribution::new(40.0,4.0));
 
     let pd2 = upd.sample(0.75);
-    let pd3 = npd.sample(0.5);
+    let pd3 = npd.sample(0.75);
+    let pd4 = pd2.compose(&pd3);
     let output = pd.f(4.01);
     println!("searched value was, {}!", output);
-    println!("{}, {}!", name, u.inv_cdf(0.25));
     let output2 = pd2.f(4.01);
     println!("searched value was, {}!", output2);
     let output3 = pd3.f(4.01);
     println!("searched value was, {}!", output3);
+    let output4 = pd4.f(4.01);
+    println!("searched value was, {}!", output4);
 }
