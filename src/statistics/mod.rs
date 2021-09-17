@@ -28,3 +28,20 @@ impl DistributedVariable for NormalDistribution{
         distribution::ContinuousCDF::inverse_cdf(&self.dist, probability)
     }
 }
+pub struct ShiftedGammaDistribution{
+    pub dist: distribution::Gamma,
+    pub shift: f64
+}
+impl ShiftedGammaDistribution{
+    pub fn new(alpha: f64, beta: f64, shift: f64) -> Self{
+        Self{
+            dist: distribution::Gamma::new(alpha, beta).unwrap(),//verify
+            shift
+        }
+    }
+}
+impl DistributedVariable for ShiftedGammaDistribution{
+    fn inv_cdf(&self, probability: f64) -> f64{
+        distribution::ContinuousCDF::inverse_cdf(&self.dist, probability) + self.shift
+    }
+}
