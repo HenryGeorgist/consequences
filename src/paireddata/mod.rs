@@ -70,14 +70,14 @@ impl Integratable for PairedData{
         let mut x1 = 1.0;
         let mut y1 = 0.0;
         let mut ead = 0.0;
-        let size = self.xvals.len();
-        for i in size..0{
-            let xdelta = x1- self.xvals[i];
+        let size = self.xvals.len()-1;
+        for i in 0..size{
+            let xdelta = x1- self.xvals[size-i];
             square = xdelta * y1;
-            triangle = ((xdelta)*(self.yvals[i] - y1))/2.0;
+            triangle = ((xdelta)*(self.yvals[size-i] - y1))/2.0;
             ead += square + triangle;
-            x1 = self.xvals[i];
-            y1 = self.yvals[i];
+            x1 = self.xvals[size-i];
+            y1 = self.yvals[size-i];
         }
         if x1 != 0.0{
             let xdelta = x1 - 0.0;

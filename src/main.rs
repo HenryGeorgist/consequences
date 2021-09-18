@@ -19,23 +19,23 @@ fn main() {
     npd.add_pair(3.0, statistics::NormalDistribution::new(30.0,3.0 ));
     npd.add_pair(4.0, statistics::NormalDistribution::new(40.0,4.0));
 
-    let pd2 = upd.sample(0.75);
-    let pd3 = npd.sample(0.75);
+    let pd2 = upd.sample(0.5);
+    let pd3 = npd.sample(0.5);
     let pd4 = pd2.compose(&pd3);
-    let output = pd.f(4.01);
+    let output = pd.f(1.25);
     println!("searched value was, {}!", output);
-    let output2 = pd2.f(4.01);
+    let output2 = pd2.f(1.5);
     println!("searched value was, {}!", output2);
-    let output3 = pd3.f(4.01);
+    let output3 = pd3.f(2.5);
     println!("searched value was, {}!", output3);
-    let output4 = pd4.f(4.01);
+    let output4 = pd4.f(3.25);
     println!("searched value was, {}!", output4);
     fda_ead_deterministic();
 }
 
 fn fda_ead_deterministic(){
     //create a flow frequency curve
-    let flow_distribution = UniformDistribution{min: 0.0, max: 100.0};
+    let flow_distribution = UniformDistribution{min: 0.0, max: 1000.0};
     let mut flow_frequency = paireddata::PairedData::new();
     let ords = 1000;
     for i in 0..ords{
@@ -48,17 +48,17 @@ fn fda_ead_deterministic(){
     flow_stage.add_pair(1.0, 1.0);
     flow_stage.add_pair(5.0, 5.0);
     flow_stage.add_pair(99.0, 99.0);
-    flow_stage.add_pair(100.0, 100.0);
+    flow_stage.add_pair(1000.0, 1000.0);
 
     let mut stage_damage = paireddata::PairedData::new();
     stage_damage.add_pair(0.0, 0.0);
     stage_damage.add_pair(1.0, 1.0);
     stage_damage.add_pair(5.0, 5.0);
     stage_damage.add_pair(99.0, 99.0);
-    stage_damage.add_pair(100.0, 100.0);
+    stage_damage.add_pair(1000.0, 1000.0);
 
-    let frequency_stage = flow_frequency.compose(&flow_stage);
-    let frequency_damage = frequency_stage.compose(&stage_damage);
+    let frequency_stage = flow_stage.compose(&flow_frequency);
+    let frequency_damage = stage_damage.compose(&frequency_stage);
     let ead = frequency_damage.integrate();
     println!("EAD was {}!", ead);
 
