@@ -61,5 +61,4 @@ fn fda_ead_deterministic(){
     let frequency_damage = stage_damage.compose(&frequency_stage);
     let ead = frequency_damage.integrate();
     println!("EAD was {}!", ead);
-
 }
