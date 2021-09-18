@@ -64,23 +64,23 @@ impl Composable for PairedData {
 }
 impl Integratable for PairedData{
     fn integrate(&self) -> f64 {
-        let mut triangle = 0.0;
-        let mut square = 0.0;
+        let mut triangle;
+        let mut square;
         //assume yvals are damages and x vals are non exceedance probabilities.
-        let mut x1 = 1.0;
-        let mut y1 = 0.0;
-        let mut ead = 0.0;
-        let size = self.xvals.len()-1;
+        let mut x1=0.0;
+        let mut y1=0.0;
+        let mut ead=0.0;
+        let size = self.xvals.len();
         for i in 0..size{
-            let xdelta = x1- self.xvals[size-i];
+            let xdelta = self.xvals[i]-x1;
             square = xdelta * y1;
-            triangle = ((xdelta)*(self.yvals[size-i] - y1))/2.0;
+            triangle = ((xdelta)*(self.yvals[i] - y1))/2.0;
             ead += square + triangle;
-            x1 = self.xvals[size-i];
-            y1 = self.yvals[size-i];
+            x1 = self.xvals[i];
+            y1 = self.yvals[i];
         }
         if x1 != 0.0{
-            let xdelta = x1 - 0.0;
+            let xdelta = 1.0-x1;
             ead += xdelta*y1;
         }
         ead

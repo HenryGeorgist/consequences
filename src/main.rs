@@ -37,7 +37,7 @@ fn fda_ead_deterministic(){
     //create a flow frequency curve
     let flow_distribution = UniformDistribution{min: 0.0, max: 1000.0};
     let mut flow_frequency = paireddata::PairedData::new();
-    let ords = 1000;
+    let ords = 100000;
     for i in 0..ords{
         let p = {i as f64/ords as f64} as f64;
         flow_frequency.add_pair(p, flow_distribution.inv_cdf(p));
@@ -45,17 +45,17 @@ fn fda_ead_deterministic(){
 
     let mut flow_stage = paireddata::PairedData::new();
     flow_stage.add_pair(0.0, 0.0);
-    flow_stage.add_pair(1.0, 1.0);
-    flow_stage.add_pair(5.0, 5.0);
-    flow_stage.add_pair(99.0, 99.0);
-    flow_stage.add_pair(1000.0, 1000.0);
+    flow_stage.add_pair(1.0, 2.0);
+    flow_stage.add_pair(5.0, 10.0);
+    flow_stage.add_pair(100.0, 200.0);
+    flow_stage.add_pair(1000.0, 2000.0);
 
     let mut stage_damage = paireddata::PairedData::new();
     stage_damage.add_pair(0.0, 0.0);
-    stage_damage.add_pair(1.0, 1.0);
-    stage_damage.add_pair(5.0, 5.0);
-    stage_damage.add_pair(99.0, 99.0);
-    stage_damage.add_pair(1000.0, 1000.0);
+    stage_damage.add_pair(2.0, 2.0);
+    stage_damage.add_pair(10.0, 10.0);
+    stage_damage.add_pair(200.0, 200.0);
+    stage_damage.add_pair(2000.0, 2000.0);
 
     let frequency_stage = flow_stage.compose(&flow_frequency);
     let frequency_damage = stage_damage.compose(&frequency_stage);
