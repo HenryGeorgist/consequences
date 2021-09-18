@@ -2,6 +2,9 @@ pub mod uncertainpaireddata;
 pub trait ValueSampler{
     fn f(&self, x: f64) -> f64;
 }
+pub trait Integratable{
+    fn integrate(&self) -> f64;
+}
 pub trait Composable{
     fn compose(&self, g: &PairedData) ->PairedData;//could probably sub valuesampler here.
 }
@@ -9,6 +12,19 @@ pub struct PairedData{
     pub xvals : Vec<f64>,
     pub yvals : Vec<f64>
 
+}
+impl PairedData {
+    pub fn new() -> Self{
+        Self{
+            yvals: Vec::new(),
+            xvals: Vec::new()
+        }
+    }
+    pub fn add_pair(&mut self,x: f64, y: f64) -> &mut Self{
+        self.yvals.push(y);
+        self.xvals.push(x);
+        self
+    }
 }
 impl ValueSampler for PairedData{
     fn f(&self, x: f64) -> f64{
@@ -36,7 +52,7 @@ impl ValueSampler for PairedData{
 }
 impl Composable for PairedData {
     fn compose(&self, g: &PairedData) ->PairedData {
-        let size = self.xvals.len();
+        let size = g.xvals.len();
         let mut ys = Vec::new();
         let mut xs = Vec::new();
         for i in 0..size{
@@ -46,6 +62,30 @@ impl Composable for PairedData {
         PairedData{xvals: xs, yvals: ys}
     }
 }
+impl Integratable for PairedData{
+    fn integrate(&self) -> f64 {
+        let mut triangle = 0.0;
+        let mut square = 0.0;
+        //assume yvals are damages and x vals are non exceedance probabilities.
+        let mut x1 = 1.0;
+        let mut y1 = 0.0;
+        let mut ead = 0.0;
+        let size = self.xvals.len();
+        for i in size..0{
+            let xdelta = x1- self.xvals[i];
+            square = xdelta * y1;
+            triangle = ((xdelta)*(self.yvals[i] - y1))/2.0;
+            ead += square + triangle;
+            x1 = self.xvals[i];
+            y1 = self.yvals[i];
+        }
+        if x1 != 0.0{
+            let xdelta = x1 - 0.0;
+            ead += xdelta*y1;
+        }
+        ead
+    }
+}   
 fn bisearch(a: Vec<f64>, len: usize, target_value: f64) -> Option<usize> {
     let mut low: i8 = 0;
     let mut high: i8 = len as i8 - 1;

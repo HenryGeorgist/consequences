@@ -1,9 +1,18 @@
 extern crate statrs;
+
+use crate::paireddata::PairedData;
 use self::statrs::distribution;
 
 pub trait DistributedVariable{
     fn inv_cdf(&self, probability: f64) -> f64;
 }
+pub trait Bootstrapper : DistributedVariable + Fittable{
+    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData;
+}
+pub trait Fittable{
+    fn fit(&self, sample: Vec<f64>) -> dyn DistributedVariable;
+}
+
 pub struct UniformDistribution{
     pub min: f64,
     pub max: f64
@@ -13,6 +22,34 @@ impl DistributedVariable for UniformDistribution{
         self.min + ((self.max - self.min) * probability)
     }
 }
+/*
+impl Fittable for UniformDistribution{
+    fn fit(&self, sample: Vec<f64>) -> (dyn DistributedVariable + 'static){
+        let min = *sample.iter().min().unwrap();
+        let max = *sample.iter().max().unwrap();
+        UniformDistribution{min, max}
+    }
+}
+impl Bootstrapper for UniformDistribution{
+    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData {
+        todo!()
+    }
+}
+impl Bootstrapper for DistributedVariable{
+    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData {
+        
+        let mut bootstrap = Vec::new();
+        for i in 0..size{
+            ys.push(self.inv_cdf(randomvalue));
+            let x = self.xvals[i];
+            xs.push(x);
+        }
+        
+        PairedData{xvals: xs, yvals: ys}
+    }
+}
+*/
+
 pub struct NormalDistribution{
     pub dist: distribution::Normal,
 }

@@ -1,4 +1,5 @@
-use paireddata::ValueSampler;
+use paireddata::{Integratable, ValueSampler};
+use statistics::{DistributedVariable, UniformDistribution};
 use crate::paireddata::{Composable, uncertainpaireddata::PairedDataSampler};
 mod paireddata;
 mod statistics;
@@ -29,4 +30,36 @@ fn main() {
     println!("searched value was, {}!", output3);
     let output4 = pd4.f(4.01);
     println!("searched value was, {}!", output4);
+    fda_ead_deterministic();
+}
+
+fn fda_ead_deterministic(){
+    //create a flow frequency curve
+    let flow_distribution = UniformDistribution{min: 0.0, max: 100.0};
+    let mut flow_frequency = paireddata::PairedData::new();
+    let ords = 1000;
+    for i in 0..ords{
+        let p = {i as f64/ords as f64} as f64;
+        flow_frequency.add_pair(p, flow_distribution.inv_cdf(p));
+    }
+
+    let mut flow_stage = paireddata::PairedData::new();
+    flow_stage.add_pair(0.0, 0.0);
+    flow_stage.add_pair(1.0, 1.0);
+    flow_stage.add_pair(5.0, 5.0);
+    flow_stage.add_pair(99.0, 99.0);
+    flow_stage.add_pair(100.0, 100.0);
+
+    let mut stage_damage = paireddata::PairedData::new();
+    stage_damage.add_pair(0.0, 0.0);
+    stage_damage.add_pair(1.0, 1.0);
+    stage_damage.add_pair(5.0, 5.0);
+    stage_damage.add_pair(99.0, 99.0);
+    stage_damage.add_pair(100.0, 100.0);
+
+    let frequency_stage = flow_frequency.compose(&flow_stage);
+    let frequency_damage = frequency_stage.compose(&stage_damage);
+    let ead = frequency_damage.integrate();
+    println!("EAD was {}!", ead);
+
 }
