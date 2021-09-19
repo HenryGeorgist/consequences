@@ -1,5 +1,5 @@
 extern crate statrs;
-
+extern crate rand;
 use crate::paireddata::PairedData;
 use self::statrs::distribution;
 
@@ -9,10 +9,63 @@ pub trait DistributedVariable{
 pub trait Fittable{
     fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>;
 }
-
+pub trait InlineStats{
+    fn add_observation(&mut self, sample: f64);
+    fn add_observations(&mut self, sample: Vec<f64>){
+        for s in sample.iter(){
+            self.add_observation(*s);
+        }
+    }
+}
+pub struct ProductMoments{
+    pub min: f64,
+    pub max: f64,
+    pub count: i64,
+    pub mean: f64,
+    pub sample_variance: f64
+}
+impl ProductMoments{
+    pub fn new() -> Self{
+        Self{
+            min: f64::MAX,
+            max: f64::MIN,
+            mean: 0.0,
+            count: 0,
+            sample_variance: 0.0
+        }
+    }
+}
+impl InlineStats for ProductMoments{
+    fn add_observation(&mut self, sample: f64) {
+        if self.count == 0 {
+            self.max = sample;
+            self.min = sample;
+            self.mean = sample;
+            self.sample_variance = 0.0;
+            self.count = 1;
+        } else {
+            if sample > self.max {
+                self.max = sample;
+            } else if sample < self.min {
+                self.min = sample
+            }
+            self.count += 1;
+            self.sample_variance = (({self.count-2} as f64 / {self.count-1} as f64 ) * self.sample_variance) + ({sample-self.mean}.powf(2.0))/self.count as f64;
+            self.mean = self.mean + ((sample - self.mean) / self.count as f64)
+        }
+    }
+}
 pub struct UniformDistribution{
     pub min: f64,
     pub max: f64
+}
+impl UniformDistribution{
+    pub fn new(min: f64, max: f64) -> Self{
+        Self{
+            min,
+            max
+        }
+    }
 }
 impl DistributedVariable for UniformDistribution{
     fn inv_cdf(&self, probability: f64) -> f64{
@@ -21,31 +74,13 @@ impl DistributedVariable for UniformDistribution{
 }
 impl Fittable for UniformDistribution{
     fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>{
-        let min = sample.into_iter().reduce(f64::min).unwrap();
-        let max = sample.into_iter().reduce(f64::max).unwrap();
+        let mut p = ProductMoments::new();
+        p.add_observations(sample);
+        let min = p.min;
+        let max = p.max;
         Box::new(UniformDistribution{min, max})
     }
 }
-fn bootstrap_to_distribution(dist: &(impl DistributedVariable + Fittable), eyor: i64) -> Box<dyn DistributedVariable>{
-    //bootstrap
-    let mut bootstrap = Vec::new();
-    for i in 0..eyor{
-        bootstrap.push(dist.inv_cdf(0.5));//get a random number generator.
-    }
-    //fit
-    dist.fit(bootstrap)
-}
-fn bootstrap_to_paireddata(dist: &(impl DistributedVariable + Fittable), eyor: i64, ordinates: i64) -> PairedData {
-    let bootstrapdist = bootstrap_to_distribution(dist, eyor);
-    //create paired data
-    let mut bootstrappd = PairedData::new();
-    for i in 0..ordinates{
-        let p = {i as f64/ordinates as f64} as f64;
-        bootstrappd.add_pair(p, bootstrapdist.inv_cdf(p));
-    }
-    bootstrappd
-}
-
 pub struct NormalDistribution{
     pub dist: distribution::Normal,
 }
@@ -59,6 +94,16 @@ impl NormalDistribution {
 impl DistributedVariable for NormalDistribution{
     fn inv_cdf(&self, probability: f64) -> f64{
         distribution::ContinuousCDF::inverse_cdf(&self.dist, probability)
+    }
+}
+impl Fittable for NormalDistribution{
+    fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>{
+        let mut p = ProductMoments::new();
+        p.add_observations(sample);
+        let mean = p.mean;
+        let st_dev = p.sample_variance.sqrt();//i think this is right.
+        let n = NormalDistribution::new(mean,st_dev);
+        Box::new(n)
     }
 }
 pub struct ShiftedGammaDistribution{
@@ -117,12 +162,14 @@ impl DistributedVariable for PearsonIIIDistribution{
     }
 }
 pub struct LogPearsonIIIDistribution{
-    pub dist: PearsonIIIDistribution
+    pub dist: PearsonIIIDistribution,
+    pub skew: f64
 }
 impl LogPearsonIIIDistribution{
     pub fn new(mean: f64, standard_deviation: f64, skew: f64) -> Self{
         Self{
-            dist: PearsonIIIDistribution::new(mean,standard_deviation, skew)
+            dist: PearsonIIIDistribution::new(mean,standard_deviation, skew),
+            skew
         }
     }
 }
@@ -131,4 +178,35 @@ impl DistributedVariable for LogPearsonIIIDistribution{
         let base: f64 = 10.0;
         base.powf(self.dist.inv_cdf(probability))
     }
+}
+impl Fittable for LogPearsonIIIDistribution{
+    fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>{
+        let mut p = ProductMoments::new();
+        p.add_observations(sample);
+        let mean = p.mean;
+        let st_dev = p.sample_variance.sqrt();//i think this is right.
+        //TODO: compute skew, currently using fixed skew.
+        let n = LogPearsonIIIDistribution::new(mean,st_dev, self.skew);
+        Box::new(n)
+    }
+}
+pub fn bootstrap_to_distribution(dist: &(impl DistributedVariable + Fittable), eyor: i64, seed: i64) -> Box<dyn DistributedVariable>{
+    let mut randy = rand::Rng::seeded_rng(seed);
+    //bootstrap
+    let mut bootstrap = Vec::new();
+    for i in 0..eyor{
+        bootstrap.push(dist.inv_cdf(randy.gen()));//get a random number generator.
+    }
+    //fit
+    dist.fit(bootstrap)
+}
+pub fn bootstrap_to_paireddata(dist: &(impl DistributedVariable + Fittable), eyor: i64, ordinates: i64, seed: i64) -> PairedData {
+    let bootstrapdist = bootstrap_to_distribution(dist, eyor, seed);
+    //create paired data
+    let mut bootstrappd = PairedData::new();
+    for i in 0..ordinates{
+        let p = {i as f64/ordinates as f64} as f64;
+        bootstrappd.add_pair(p, bootstrapdist.inv_cdf(p));
+    }
+    bootstrappd
 }
