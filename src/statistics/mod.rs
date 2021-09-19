@@ -49,7 +49,6 @@ impl Bootstrapper for DistributedVariable{
     }
 }
 */
-
 pub struct NormalDistribution{
     pub dist: distribution::Normal,
 }
@@ -72,7 +71,7 @@ pub struct ShiftedGammaDistribution{
 impl ShiftedGammaDistribution{
     pub fn new(alpha: f64, beta: f64, shift: f64) -> Self{
         Self{
-            dist: distribution::Gamma::new(alpha, beta).unwrap(),//verify
+            dist: distribution::Gamma::new(alpha, 1.0/beta).unwrap(),//verify
             shift
         }
     }
@@ -82,37 +81,57 @@ impl DistributedVariable for ShiftedGammaDistribution{
         distribution::ContinuousCDF::inverse_cdf(&self.dist, probability) + self.shift
     }
 }
-
 pub struct PearsonIIIDistribution{
-    pub dist: dyn DistributedVariable
+    pub dist: Box<dyn DistributedVariable>
 }
 impl PearsonIIIDistribution{
     pub fn new(mean: f64, standard_deviation: f64, skew: f64) -> Self{
-        let mut distribution : dyn DistributedVariable;
         let zskewtest = skew.abs();
         if zskewtest < 0.0001{
-            distribution = NormalDistribution::new(mean,standard_deviation);
+            let zdist = NormalDistribution::new(mean,standard_deviation);
+            Self{
+                dist: Box::new(zdist)
+            }
         }else{
-            let alpha = 4.0*(skew*skew);
+            let alpha = 4.0/(skew*skew);
             let mut beta = 0.5*(standard_deviation*skew);
             if skew < 0.0{
                 //negative skew
                 beta = -beta;
                 let shift = -mean + (2.0*(standard_deviation/skew));
-                distribution = ShiftedGammaDistribution::new(alpha, beta, shift);
+                let ndist = ShiftedGammaDistribution::new(alpha, beta, shift);
+                Self{
+                    dist: Box::new(ndist)
+                }
             }else{
                 //positive skew
                 let shift = mean - (2.0*(standard_deviation/skew));
-                distribution = ShiftedGammaDistribution::new(alpha, beta, shift);
+                let pdist = ShiftedGammaDistribution::new(alpha, beta, shift);
+                Self{
+                    dist: Box::new(pdist)
+                }
             }
-        }
-        Self{
-            dist: distribution
         }
     }
 }
 impl DistributedVariable for PearsonIIIDistribution{
     fn inv_cdf(&self, probability: f64) -> f64{
-        self.inv_cdf(probability)
+        self.dist.inv_cdf(probability)
+    }
+}
+pub struct LogPearsonIIIDistribution{
+    pub dist: PearsonIIIDistribution
+}
+impl LogPearsonIIIDistribution{
+    pub fn new(mean: f64, standard_deviation: f64, skew: f64) -> Self{
+        Self{
+            dist: PearsonIIIDistribution::new(mean,standard_deviation, skew)
+        }
+    }
+}
+impl DistributedVariable for LogPearsonIIIDistribution{
+    fn inv_cdf(&self, probability: f64) -> f64{
+        let base: f64 = 10.0;
+        base.powf(self.dist.inv_cdf(probability))
     }
 }

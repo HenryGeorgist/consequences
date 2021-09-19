@@ -1,5 +1,5 @@
 use paireddata::{Integratable, ValueSampler};
-use statistics::{DistributedVariable, UniformDistribution};
+use statistics::{DistributedVariable, LogPearsonIIIDistribution, UniformDistribution};
 use crate::paireddata::{Composable, uncertainpaireddata::PairedDataSampler};
 mod paireddata;
 mod statistics;
@@ -31,8 +31,21 @@ fn main() {
     let output4 = pd4.f(3.25);
     println!("searched value was, {}!", output4);
     fda_ead_deterministic();
+    test_lpiii_dist();
 }
-
+fn test_lpiii_dist(){
+    let lpiii = LogPearsonIIIDistribution::new(3.368, 0.246, 0.668);
+	let probs = [0.998, 0.995, 0.99, 0.98, 0.95, 0.9, 0.8, 0.5, 0.2, 0.1, 0.05, 0.01];
+	let expected = [18878.87515053270180942491, 14246.58825980164874636102, 11408.83966308754315832630, 9043.72657283687294693664, 6511.95816420457322237780, 4961.12702987368902540766, 3656.87315507261564562214, 2191.79779904862152761780, 1435.93911608508096833248, 1189.92079576230275961279, 1035.43101823480742496031, 827.66401592971760692308];
+	let size = probs.len();
+    for idx in  0..size {
+		let got = lpiii.inv_cdf(probs[idx]);
+		let diff = expected[idx] - got;
+		if diff.abs() > 0.5 {
+			println!("InvCDF{} = {}; expected {}", probs[idx], got, expected[idx])
+		}
+	}
+}
 fn fda_ead_deterministic(){
     //create a flow frequency curve
     let flow_distribution = UniformDistribution{min: 0.0, max: 1000.0};
