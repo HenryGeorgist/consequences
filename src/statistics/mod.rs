@@ -6,11 +6,8 @@ use self::statrs::distribution;
 pub trait DistributedVariable{
     fn inv_cdf(&self, probability: f64) -> f64;
 }
-pub trait Bootstrapper : DistributedVariable + Fittable{
-    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData;
-}
 pub trait Fittable{
-    fn fit(&self, sample: Vec<f64>) -> dyn DistributedVariable;
+    fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>;
 }
 
 pub struct UniformDistribution{
@@ -22,33 +19,33 @@ impl DistributedVariable for UniformDistribution{
         self.min + ((self.max - self.min) * probability)
     }
 }
-/*
 impl Fittable for UniformDistribution{
-    fn fit(&self, sample: Vec<f64>) -> (dyn DistributedVariable + 'static){
-        let min = *sample.iter().min().unwrap();
-        let max = *sample.iter().max().unwrap();
-        UniformDistribution{min, max}
+    fn fit(&self, sample: Vec<f64>) -> Box<dyn DistributedVariable>{
+        let min = sample.into_iter().reduce(f64::min).unwrap();
+        let max = sample.into_iter().reduce(f64::max).unwrap();
+        Box::new(UniformDistribution{min, max})
     }
 }
-impl Bootstrapper for UniformDistribution{
-    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData {
-        todo!()
+fn bootstrap_to_distribution(dist: &(impl DistributedVariable + Fittable), eyor: i64) -> Box<dyn DistributedVariable>{
+    //bootstrap
+    let mut bootstrap = Vec::new();
+    for i in 0..eyor{
+        bootstrap.push(dist.inv_cdf(0.5));//get a random number generator.
     }
+    //fit
+    dist.fit(bootstrap)
 }
-impl Bootstrapper for DistributedVariable{
-    fn bootstrap(&self, eyor: i64, ordinates: i64) -> PairedData {
-        
-        let mut bootstrap = Vec::new();
-        for i in 0..size{
-            ys.push(self.inv_cdf(randomvalue));
-            let x = self.xvals[i];
-            xs.push(x);
-        }
-        
-        PairedData{xvals: xs, yvals: ys}
+fn bootstrap_to_paireddata(dist: &(impl DistributedVariable + Fittable), eyor: i64, ordinates: i64) -> PairedData {
+    let bootstrapdist = bootstrap_to_distribution(dist, eyor);
+    //create paired data
+    let mut bootstrappd = PairedData::new();
+    for i in 0..ordinates{
+        let p = {i as f64/ordinates as f64} as f64;
+        bootstrappd.add_pair(p, bootstrapdist.inv_cdf(p));
     }
+    bootstrappd
 }
-*/
+
 pub struct NormalDistribution{
     pub dist: distribution::Normal,
 }
