@@ -184,13 +184,17 @@ impl DistributedVariable for LogPearsonIIIDistribution{
 }
 impl Fittable for LogPearsonIIIDistribution{
     fn fit(&self, sample: &Vec<f64>) -> Box<dyn DistributedVariable>{
+        let mut lsample = Vec::new();
+        sample.iter().for_each(|s| {
+            lsample.push(s.log10());
+        });
         let mut p = ProductMoments::new();
-        p.add_observations(sample);
+        p.add_observations(&lsample);
         let mean = p.mean;
         let st_dev = p.sample_variance.sqrt();//i think this is right.
         //TODO: compute skew, currently using fixed skew.
         let mut skew_sum = 0.0;
-        sample.iter().for_each(|s| {
+        lsample.iter().for_each(|s| {
             skew_sum += (s-mean).powf(3.0);
         });
         let skew = (p.count as f64 * skew_sum) / ({p.count as f64 - 1.0} * {p.count as f64 - 2.0} * st_dev.powf(3.0));

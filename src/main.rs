@@ -1,6 +1,10 @@
 use paireddata::{Integratable, ValueSampler};
-use statistics::{DistributedVariable, LogPearsonIIIDistribution, UniformDistribution};
-use crate::paireddata::{Composable, uncertainpaireddata::PairedDataSampler};
+extern crate rand;
+use self::rand::Rng;
+use self::rand::{SeedableRng, rngs::StdRng};
+use statistics::{DistributedVariable, LogPearsonIIIDistribution, UniformDistribution, bootstrap_to_distribution};
+use crate::statistics::{InlineStats, bootstrap_to_paireddata};
+use crate::{paireddata::{Composable, uncertainpaireddata::PairedDataSampler}, statistics::ProductMoments};
 mod paireddata;
 mod statistics;
 fn main() {
@@ -32,6 +36,7 @@ fn main() {
     println!("searched value was, {}!", output4);
     fda_ead_deterministic();
     test_lpiii_dist();
+    test_fda_ead_uncertainty();
 }
 fn test_lpiii_dist(){
     let lpiii = LogPearsonIIIDistribution::new(3.368, 0.246, 0.668);
@@ -45,6 +50,8 @@ fn test_lpiii_dist(){
 			println!("InvCDF{} = {}; expected {}", probs[idx], got, expected[idx])
 		}
 	}
+    let seed = 1234;
+    let _dist2 = bootstrap_to_distribution(&lpiii, 100, seed);
 }
 fn fda_ead_deterministic(){
     //create a flow frequency curve
@@ -74,4 +81,38 @@ fn fda_ead_deterministic(){
     let frequency_damage = stage_damage.compose(&frequency_stage);
     let ead = frequency_damage.integrate();
     println!("EAD was {}!", ead);
+}
+fn test_fda_ead_uncertainty(){
+    let lpiii = LogPearsonIIIDistribution::new(3.368, 0.246, 0.668);
+    // create basic pm to store outputs
+    let mut ead_dist = ProductMoments::new();
+    //create a random number generator for the loop.
+    let seed = 1234;
+    let mut randy = StdRng::seed_from_u64(seed);
+    let iterations = 100;
+    for i in 0..iterations{
+    let flow_frequency = bootstrap_to_paireddata(&lpiii, 100, 1000, randy.gen());
+    //create a flow frequency curve
+
+    let mut flow_stage = paireddata::PairedData::new();
+    flow_stage.add_pair(0.0, 0.0);
+    flow_stage.add_pair(1.0, 2.0);
+    flow_stage.add_pair(5.0, 10.0);
+    flow_stage.add_pair(100.0, 200.0);
+    flow_stage.add_pair(1000000.0, 2000000.0);
+
+    let mut stage_damage = paireddata::PairedData::new();
+    stage_damage.add_pair(0.0, 0.0);
+    stage_damage.add_pair(2.0, 2.0);
+    stage_damage.add_pair(10.0, 10.0);
+    stage_damage.add_pair(200.0, 200.0);
+    stage_damage.add_pair(2000000.0, 2000000.0);
+
+    let frequency_stage = flow_stage.compose(&flow_frequency);
+    let frequency_damage = stage_damage.compose(&frequency_stage);
+    let ead = frequency_damage.integrate();
+    ead_dist.add_observation(&ead);
+    println!("EAD was {}!", ead);        
+    }
+    println!("mean EAD was {}, max was {}, min was {}!", ead_dist.mean, ead_dist.max, ead_dist.min); 
 }
